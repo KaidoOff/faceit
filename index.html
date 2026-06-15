@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+<style>
+
+body {
+    margin:0;
+    background:transparent;
+    font-family:Arial;
+    color:white;
+}
+
+
+.box {
+
+    width:400px;
+    background:#111;
+
+    border-radius:15px;
+
+    padding:20px;
+
+}
+
+
+
+h2 {
+
+    margin-top:0;
+
+}
+
+
+
+.bar {
+
+    width:100%;
+    height:22px;
+
+    border-radius:12px;
+
+    overflow:hidden;
+
+    background:#222;
+
+}
+
+
+
+.fill {
+
+    width:100%;
+    height:100%;
+
+    transition:.6s;
+
+    background:
+    linear-gradient(
+        90deg,
+        #00ff66 0%,
+        #ffd000 50%,
+        #ff2222 100%
+    );
+
+}
+
+</style>
+
+</head>
+
+
+<body>
+
+
+<div class="box">
+
+
+<h2 id="title">
+FACEIT сегодня
+</h2>
+
+
+<div>
+
+🟢 Победы:
+<span id="wins">0</span>
+
+
+<br>
+
+
+🔴 Поражения:
+<span id="losses">0</span>
+
+
+</div>
+
+
+
+<br>
+
+
+
+<div class="bar">
+
+<div id="bar" class="fill"></div>
+
+</div>
+
+
+
+</div>
+
+
+
+
+
+<script>
+
+
+const nickname = "Kaido-";
+
+const key = "ТВОЙ_API_KEY";
+
+
+
+
+// если нет API
+
+const placeholder = {
+
+    wins:5,
+
+    losses:10
+
+};
+
+
+
+
+
+function updateStats(
+    wins,
+    losses,
+    demo=false
+){
+
+
+
+document.getElementById("wins").innerHTML =
+wins;
+
+
+document.getElementById("losses").innerHTML =
+losses;
+
+
+
+let total =
+wins + losses;
+
+
+
+let balance = 50;
+
+
+
+if(total > 0){
+
+
+    balance =
+    50 + ((wins-losses)/total)*50;
+
+
+}
+
+
+
+balance = Math.max(
+    0,
+    Math.min(
+        100,
+        balance
+    )
+);
+
+
+
+
+// сколько красного
+
+let red =
+100 - balance;
+
+
+
+let bar =
+document.getElementById("bar");
+
+
+
+// меняем только градиент
+
+bar.style.background = `
+
+linear-gradient(
+90deg,
+
+#ff2222 0%,
+
+#ff2222 ${red}%,
+
+#ffd000 50%,
+
+#00ff66 ${balance}%,
+
+#00ff66 100%
+
+)
+
+`;
+
+
+
+
+
+document.getElementById("title").innerHTML =
+
+`${nickname} | сегодня ${wins}-${losses}`
+
++
+
+(demo ? " (TEST)" : "");
+
+
+
+}
+
+
+
+
+
+
+async function getPlayer(){
+
+
+let res = await fetch(
+
+`https://open.faceit.com/data/v4/players?nickname=${nickname}`,
+
+{
+
+headers:{
+
+Authorization:
+`Bearer ${key}`
+
+}
+
+}
+
+);
+
+
+
+if(!res.ok)
+throw new Error("API error");
+
+
+
+return await res.json();
+
+
+
+}
+
+
+
+
+
+
+
+async function load(){
+
+
+
+try {
+
+
+
+let player =
+await getPlayer();
+
+
+
+let id =
+player.player_id;
+
+
+
+
+
+let start =
+new Date();
+
+
+start.setHours(
+0,0,0,0
+);
+
+
+
+
+let end =
+new Date();
+
+
+end.setHours(
+23,59,59,999
+);
+
+
+
+
+
+let from =
+Math.floor(
+start.getTime()/1000
+);
+
+
+
+let to =
+Math.floor(
+end.getTime()/1000
+);
+
+
+
+
+
+
+
+let res =
+await fetch(
+
+`https://open.faceit.com/data/v4/players/${id}/history?game=cs2&from=${from}&to=${to}&limit=100`,
+
+{
+
+headers:{
+
+Authorization:
+`Bearer ${key}`
+
+}
+
+}
+
+);
+
+
+
+if(!res.ok)
+throw new Error("history error");
+
+
+
+
+
+let data =
+await res.json();
+
+
+
+
+
+let wins=0;
+
+let losses=0;
+
+
+
+
+
+
+for(
+let match of data.items || []
+){
+
+
+
+if(
+match.status !== "finished"
+)
+
+continue;
+
+
+
+
+
+let winner =
+match.results?.winner;
+
+
+
+
+
+let myTeam =
+
+match.teams?.faction1?.players?.some(
+
+p =>
+p.player_id === id
+
+)
+
+?
+
+"faction1"
+
+:
+
+"faction2";
+
+
+
+
+
+
+if(
+
+
+(winner==="faction1" &&
+ myTeam==="faction1")
+
+
+||
+
+(winner==="faction2" &&
+ myTeam==="faction2")
+
+
+)
+
+{
+
+
+wins++;
+
+
+}
+
+else{
+
+
+losses++;
+
+
+}
+
+
+
+}
+
+
+
+
+
+
+// если сегодня не играл
+
+if(
+wins===0 &&
+losses===0
+){
+
+
+function updateStats(
+    wins,
+    losses,
+    demo=false
+){
+
+
+document.getElementById("wins").innerHTML =
+wins;
+
+
+document.getElementById("losses").innerHTML =
+losses;
+
+
+
+let total =
+wins + losses;
+
+
+
+let greenPosition = 50;
+
+
+
+if(total > 0){
+
+    greenPosition =
+    50 + ((wins - losses) / total) * 50;
+
+}
+
+
+
+greenPosition = Math.max(
+    0,
+    Math.min(
+        100,
+        greenPosition
+    )
+);
+
+
+
+let bar =
+document.getElementById("bar");
+
+
+
+// Градиент всегда на всю ширину
+// точка желтого смещается
+
+bar.style.background = `
+
+linear-gradient(
+90deg,
+
+#00ff66 0%,
+
+#00ff66 ${greenPosition}%,
+
+#ffd000 50%,
+
+#ff2222 ${greenPosition}%,
+
+#ff2222 100%
+
+)
+
+`;
+
+
+
+document.getElementById("title").innerHTML =
+
+`${nickname} | сегодня ${wins}-${losses}`
+
++
+
+(demo ? " (TEST)" : "");
+
+
+
+}
+
+
+
+updateStats(
+
+placeholder.wins,
+
+placeholder.losses,
+
+true
+
+);
+
+
+
+}
+
+
+
+}
+
+
+
+
+
+load();
+
+
+
+setInterval(
+load,
+60000
+);
+
+
+
+</script>
+
+
+
+</body>
+</html>
